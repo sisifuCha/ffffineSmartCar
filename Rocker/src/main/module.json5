@@ -1,0 +1,9 @@
+{
+  "module": {
+    "name": "Rocker",
+    "type": "har",
+    "deviceTypes": [
+      "phone"
+    ]
+  }
+}

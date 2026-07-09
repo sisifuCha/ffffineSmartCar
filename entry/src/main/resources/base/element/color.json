@@ -1,0 +1,36 @@
+{
+  "color": [
+    {
+      "name": "start_window_background",
+      "value": "#FFFFFF"
+    },
+    {
+      "name": "window_background",
+      "value": "#FFEAB76D"
+    },
+    {
+      "name": "button_background",
+      "value": "#ec761d"
+    },
+    {
+      "name": "button_select_background",
+      "value": "#D9D9D9"
+    },
+    {
+      "name": "edit_text_background",
+      "value": "#FFABABAE"
+    },
+    {
+      "name": "track_background",
+      "value": "#ec761d"
+    },
+    {
+      "name": "slider_selected",
+      "value": "#D9D9D9"
+    },
+    {
+      "name": "track_select_background",
+      "value": "#ec761d"
+    }
+  ]
+}
