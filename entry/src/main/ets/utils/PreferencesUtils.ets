@@ -44,6 +44,9 @@ export class NetInfoPreferencesUtils {
   public static readonly KEY_IP = "KEY_IP";
   public static readonly KEY_TCP_PORT = "KEY_TCP_PORT";
   public static readonly KEY_VIDEO_PORT = "KEY_TCP_VIDEO";
+  public static readonly KEY_SLAVE_IP = "KEY_SLAVE_IP";
+  public static readonly KEY_SLAVE_PORT = "KEY_SLAVE_PORT";
+  public static readonly KEY_DUAL_MODE = "KEY_DUAL_MODE";
 
   private prefValue: preferences.Preferences | undefined = undefined;
   private initPromise: Promise<void> | undefined = undefined;
@@ -112,5 +115,41 @@ export class NetInfoPreferencesUtils {
     const pref = await this.ensureReady();
     const v = await pref.get(NetInfoPreferencesUtils.KEY_VIDEO_PORT, '6500');
     return `${v}`;
+  }
+
+  async getSlaveIp(): Promise<string> {
+    const pref = await this.ensureReady();
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_SLAVE_IP, '192.168.1.12');
+    return `${v}`;
+  }
+
+  async setSlaveIp(v: string): Promise<void> {
+    const pref = await this.ensureReady();
+    await pref.put(NetInfoPreferencesUtils.KEY_SLAVE_IP, v);
+    await pref.flush();
+  }
+
+  async getSlavePort(): Promise<string> {
+    const pref = await this.ensureReady();
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_SLAVE_PORT, '6001');
+    return `${v}`;
+  }
+
+  async setSlavePort(v: string): Promise<void> {
+    const pref = await this.ensureReady();
+    await pref.put(NetInfoPreferencesUtils.KEY_SLAVE_PORT, v);
+    await pref.flush();
+  }
+
+  async getDualMode(): Promise<boolean> {
+    const pref = await this.ensureReady();
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_DUAL_MODE, false);
+    return Boolean(v);
+  }
+
+  async setDualMode(enabled: boolean): Promise<void> {
+    const pref = await this.ensureReady();
+    await pref.put(NetInfoPreferencesUtils.KEY_DUAL_MODE, enabled);
+    await pref.flush();
   }
 }

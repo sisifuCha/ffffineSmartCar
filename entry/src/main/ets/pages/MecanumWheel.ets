@@ -4,6 +4,7 @@
 import { carApi } from '../CarUtill/CarApi';
 import { CarEncode } from '../CarUtill/CarEncode';
 import { CarRockerComponents } from '../components/CarRockerComponents';
+import { DualCarStatusBar } from '../components/DualCarStatusBar';
 
 const TAG = 'SmartCarMecanumWheel'
 
@@ -21,8 +22,11 @@ struct MecanumWheel {
   @State R2Value: number = 0;
 
   build() {
+    Column() {
+      DualCarStatusBar()
+        .margin({ left: '10vp', right: '10vp', top: '8vp' })
 
-    Row() {
+      Row() {
       // 左侧一条
       Column() {
         // 前后轮单独控制
@@ -116,6 +120,9 @@ struct MecanumWheel {
       .justifyContent(FlexAlign.Center)
       .myBroderStyles()
 
+    }
+    .width('100%')
+    .layoutWeight(1)
     }
     .width('100%')
     .height('100%')

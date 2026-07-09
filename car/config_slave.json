@@ -1,0 +1,6 @@
+{
+  "car_tcp_host": "0.0.0.0",
+  "car_tcp_port": 6001,
+  "local_ros_host": "192.168.137.207",
+  "local_ros_port": 6000
+}

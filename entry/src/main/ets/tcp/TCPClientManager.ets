@@ -1,6 +1,7 @@
 // 1. import 需要的 socket 模块。
 import socket from '@ohos.net.socket';
 import promptAction from '@ohos.promptAction';
+import { DualCarStatusManager } from './DualCarStatusManager';
 
 const TAG = "TCPClientManager";
 
@@ -98,7 +99,9 @@ export class TCPClientManager {
         console.log(TAG, `receiveMessage`, messageView)
         // 接受数据 , 这里使用try catch 包裹是为了防止拿到垃圾数导致闪退
         try {
-          TCPClientManager._receiveMessage(messageView);
+          if (!DualCarStatusManager.dispatch(messageView)) {
+            TCPClientManager._receiveMessage(messageView);
+          }
         } catch (e) {
           console.error(TAG, "MESSAGE ERROR", JSON.stringify(e))
         }

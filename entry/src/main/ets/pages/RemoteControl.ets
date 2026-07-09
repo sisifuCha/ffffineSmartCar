@@ -6,6 +6,7 @@ import { CarEncode } from '../CarUtill/CarEncode';
 import { CarDirection } from '../CarUtill/CarEnum';
 import { CarBtnComponents } from '../components/CarBtnComponents';
 import { CarRockerComponents } from '../components/CarRockerComponents';
+import { DualCarStatusBar } from '../components/DualCarStatusBar';
 import { VideoComponents } from '../components/VideoComponents';
 
 @Entry
@@ -20,80 +21,78 @@ struct RemoteControl {
   ctrlModeList: CtrlModel[] = [CtrlModel.Button, CtrlModel.Rocker]
 
   build() {
-    Row() {
-      RelativeContainer() {
-        Column() {
-          ForEach(this.ctrlTextTextList, (item: string, index: number) => {
-            MyTab({
-              // 如果当前控制模式为为当前组件所属的控制模式，那么状态选中
-              state: this.nowCtrlModel == this.ctrlModeList[index],
-              text: item
-            }).onClick(() => {
-              // 当受到点击时将当前控制模式置为当前组件所属的控制模式
-              state: this.nowCtrlModel = this.ctrlModeList[index]
-            })
+    Column() {
+      DualCarStatusBar()
+        .margin({ left: '10vp', right: '10vp', top: '8vp' })
 
-          }, (item: string) => item)
-        }
-        .id("tabs")
-        .alignRules({
-          left: { anchor: "__container__", align: HorizontalAlign.Start },
-          center: { anchor: "__container__", align: VerticalAlign.Center }
-        })
+      Row() {
+        RelativeContainer() {
+          Column() {
+            ForEach(this.ctrlTextTextList, (item: string, index: number) => {
+              MyTab({
+                state: this.nowCtrlModel == this.ctrlModeList[index],
+                text: item
+              }).onClick(() => {
+                state: this.nowCtrlModel = this.ctrlModeList[index]
+              })
+            }, (item: string) => item)
+          }
+          .id("tabs")
+          .alignRules({
+            left: { anchor: "__container__", align: HorizontalAlign.Start },
+            center: { anchor: "__container__", align: VerticalAlign.Center }
+          })
 
-        Stack() {
+          Stack() {
+            CarBtnComponents()
+              .border({ width: 1, color: Color.Black })
+              .visibility(
+                this.nowCtrlModel == CtrlModel.Button ?
+                Visibility.Visible :
+                Visibility.None)
 
-          // 操控按钮
-          CarBtnComponents()
-            .border({ width: 1, color: Color.Black })
-            .visibility(//如果选中控制模式为当前组件的控制模式，那么显示
-              this.nowCtrlModel == CtrlModel.Button ?
-              Visibility.Visible :
-              Visibility.None)
-
-
-          // 遥感控制
-          CarRockerComponents()// .width('210vp')
-            // .height('210vp')
-            .border({ width: 1, color: Color.Black })
-            .visibility(//如果选中控制模式为当前组件的控制模式，那么显示
-              this.nowCtrlModel == CtrlModel.Rocker ?
-              Visibility.Visible :
-              Visibility.None)
-        }
-        .width('210vp')
-        .height('210vp')
-        .id("ctrl")
-        .alignRules({
-          center: { anchor: "__container__", align: VerticalAlign.Center },
-          middle: { anchor: "__container__", align: HorizontalAlign.Center }
-        })
-
-      }
-      .width(0)
-      .layoutWeight(1)
-      .height('100%')
-
-      Column() {
-        // 视频播放组件
-        VideoComponents()
-        Row() {
-          Checkbox() {
-            Text("自动循迹")
-          }.onChange((value: boolean) => {
-            if (value) {
-              carApi.send(CarEncode.TrackingOpenEncode());
-            } else {
-              carApi.send(CarEncode.TrackingCloseEncode());
-            }
+            CarRockerComponents()
+              .border({ width: 1, color: Color.Black })
+              .visibility(
+                this.nowCtrlModel == CtrlModel.Rocker ?
+                Visibility.Visible :
+                Visibility.None)
+          }
+          .width('210vp')
+          .height('210vp')
+          .id("ctrl")
+          .alignRules({
+            center: { anchor: "__container__", align: VerticalAlign.Center },
+            middle: { anchor: "__container__", align: HorizontalAlign.Center }
           })
         }
+        .width(0)
+        .layoutWeight(1)
+        .height('100%')
+
+        Column() {
+          VideoComponents()
+          Row() {
+            Checkbox() {
+              Text("自动循迹")
+            }.onChange((value: boolean) => {
+              if (value) {
+                carApi.send(CarEncode.TrackingOpenEncode());
+              } else {
+                carApi.send(CarEncode.TrackingCloseEncode());
+              }
+            })
+          }
+        }
+        .width(0)
+        .height('100%')
+        .layoutWeight(1)
+        .justifyContent(FlexAlign.Center)
       }
-      .width(0)
-      .height('100%')
       .layoutWeight(1)
-      .justifyContent(FlexAlign.Center)
+      .width('100%')
     }
+    .width('100%')
     .height('100%')
     .backgroundColor($r('app.color.window_background'))
   }

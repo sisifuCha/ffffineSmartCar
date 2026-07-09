@@ -1,0 +1,7 @@
+{
+  "slave_ip": "192.168.1.12",
+  "car_tcp_port": 6001,
+  "dual_mode": true,
+  "ack_timeout_ms": 300,
+  "status_interval_sec": 1.0
+}

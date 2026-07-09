@@ -36,6 +36,32 @@ Runtime version: 17.0.6+10-b829.5 amd64
 与 Ros 对接的API看
 [Ros_api](./doc/ros_api.md)
 
+## 双车联控
+
+本项目支持**主车编排层**双车同步控制：
+
+- 手机只连接**主车**（TCP 6000）
+- 主车收到指令后本地执行，并转发给**从车**（RELAY 端口默认 6001）
+- 从车离线时自动降级为**主车单控**，主车控制不中断
+
+### 车端（car/）
+
+| 端口 | 用途 |
+|------|------|
+| **6000** | 手机 → 主车，**现有 ROS 监听**（不改） |
+| **6001** | 主车 → 从车车际 TCP |
+
+主车在 ROS 收完手机指令并执行后，经 **6001** 转发从车。集成见 [car/ros_integration.md](./car/ros_integration.md)。
+
+**从零部署全流程：[doc/双车部署操作全流程.md](./doc/双车部署操作全流程.md)**
+
+### 手机 App 配置
+
+1. 网络设置页填写**主车 IP** 和端口
+2. 开启「双车模式」，填写**从车 IP** 和 RELAY 端口
+3. 连接后 App 向主车发送 `@CONFIG{...}#`
+4. 控制页顶部显示双车同步状态
+
 ## HTTP API
 
 本项目只使用了一个http 接口，访问,相应的接口可以获取直播画面
@@ -59,7 +85,19 @@ SmartCar
 │  │  ├─ 📄NetworkSettings.png
 │  │  ├─ 📄RemoteControl1.png
 │  │  └─ 📄RemoteControl2.png 
-│  └─ 📄ros_api.md                          # ROS API 文档
+│  ├─ 📄ros_api.md                          # ROS API 文档
+│  └─ 📄双车部署操作全流程.md                # 双车从零部署步骤
+├─ 📁car                                    # 车端双车编排（Python）
+│  ├─ 📄ros_bridge.py                       # 有 ROS 时嵌入 6000
+│  ├─ 📄master_phone_server.py              # 无 ROS 时主车 6000 服务
+│  ├─ 📄orchestrator.py                     # 6001 转发 + @STATUS
+│  ├─ 📄slave_gateway.py                    # 从车监听 6001
+│  ├─ 📄protocol.py
+│  ├─ 📄ros_integration.md
+│  ├─ 📄command_executor.py
+│  ├─ 📄config_master.json
+│  ├─ 📄config_slave.json
+│  └─ 📄README.md
 ├─ 📁entry
 │  ├─ 📁src
 │  │  ├─ 📁main
@@ -71,6 +109,7 @@ SmartCar
 │  │  │  │  ├─ 📁components                 # 组件包
 │  │  │  │  │  ├─ 📄CarBtnComponents.ets    # 小车按钮组件
 │  │  │  │  │  ├─ 📄CarRockerComponents.ets # 小车摇杆组件
+│  │  │  │  │  ├─ 📄DualCarStatusBar.ets    # 双车状态条
 │  │  │  │  │  └─ 📄VideoComponents.ets     # 视频组件
 │  │  │  │  ├─ 📁entryability               # 入口Ability
 │  │  │  │  │  └─ 📄EntryAbility.ets        # 入口Ability
@@ -86,6 +125,7 @@ SmartCar
 │  │  │  │  │  └─ 📄styles.ets              # 样式
 │  │  │  │  ├─ 📁tcp                        # TCP 通信包
 │  │  │  │  │  ├─ 📄TCPClientManager.ets        # TCP 客户端管理
+│  │  │  │  │  ├─ 📄DualCarStatusManager.ets    # 双车状态管理
 │  │  │  │  │  ├─ 📄TCPClientReceiveUtils.ets   # TCP 客户端接收工具
 │  │  │  │  │  └─ 📄TCPClientSendUtils.ets      # TCP 客户端发送工具
 │  │  │  │  └─ 📁utils                      # 工具包
