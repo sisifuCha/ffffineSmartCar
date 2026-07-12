@@ -1,8 +1,6 @@
 {
   "src": [
-    "pages/Index",
-    "pages/MecanumWheel",
-    "pages/RemoteControl",
-    "pages/NetworkSettings"
+    "pages/NetworkSettings",
+    "pages/Main"
   ]
 }

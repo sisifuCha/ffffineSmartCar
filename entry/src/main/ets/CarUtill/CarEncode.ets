@@ -9,6 +9,13 @@ export namespace CarEncode {
 
 
   /**
+   * 获取电池电压
+   */
+  export function GetBatteryVoltageEncode(): string {
+    return BaseEncode('02');
+  }
+
+  /**
    * 开始循迹
    * @returns
    */

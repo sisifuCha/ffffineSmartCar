@@ -4,8 +4,8 @@ import UIAbility from '@ohos.app.ability.UIAbility';
 import Want from '@ohos.app.ability.Want';
 import window from '@ohos.window';
 import { ScreenUtils } from "../utils/ScreenUtils"
-import { TCPClientManager } from '../tcp/TCPClientManager';
-import { TCPClientSendUtils } from '../tcp/TCPClientSendUtils';
+import { AppSession } from '../model/AppSession';
+import { CarStatusStore } from '../model/CarStatusStore';
 import { PreferencesUtils } from '../utils/PreferencesUtils';
 
 export default class EntryAbility extends UIAbility {
@@ -15,6 +15,8 @@ export default class EntryAbility extends UIAbility {
     PreferencesUtils.getInstance().init(this.context).then(() => {
       hilog.info(0x0000, 'testTag', 'Preferences initialized');
     });
+    CarStatusStore.init();
+    AppSession.init();
   }
 
   onDestroy(): void {
@@ -35,13 +37,14 @@ export default class EntryAbility extends UIAbility {
       hilog.info(0x0000, 'testTag', 'Succeeded in loading the content.');
     });
 
-    // 设置应用为横屏
-    ScreenUtils.setLandscape(this.context)
+    // 设置应用为竖屏
+    ScreenUtils.setPortrait(this.context)
     // 设置屏幕常量
     ScreenUtils.keepScreenOn(this.context, true)
     // 设置标题栏不可见
     // ScreenUtils.setSystemBarEnable_api9(this.context)
     ScreenUtils.setSystemBarEnable_api10(windowStage)
+    ScreenUtils.initSafeArea(windowStage)
 
   }
 

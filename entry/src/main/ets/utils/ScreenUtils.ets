@@ -4,6 +4,23 @@ import { BusinessError } from '@ohos.base'
 
 export namespace ScreenUtils {
 
+  export const SAFE_AREA_TOP_KEY: string = 'safeAreaTopPx';
+
+  /**
+   * 读取系统状态栏避让高度，避免内容与状态栏/挖孔重叠
+   */
+  export function initSafeArea(windowStage: window.WindowStage): void {
+    const windowClass: window.Window = windowStage.getMainWindowSync();
+    const applyAvoidArea = (): void => {
+      const area = windowClass.getWindowAvoidArea(window.AvoidAreaType.TYPE_SYSTEM);
+      AppStorage.setOrCreate(ScreenUtils.SAFE_AREA_TOP_KEY, area.topRect.height);
+    };
+    applyAvoidArea();
+    windowClass.on('avoidAreaChange', () => {
+      applyAvoidArea();
+    });
+  }
+
   /**
    * 保持屏幕常量
    * @param status
@@ -45,14 +62,12 @@ export namespace ScreenUtils {
 
 
   /**
-   * 将应用设置为横屏
+   * 将应用设置为竖屏
    */
-  export function setLandscape(ctx: common.BaseContext) {
-    //将应用设置为横屏
+  export function setPortrait(ctx: common.BaseContext) {
     let promise = window.getLastWindow(ctx);
     promise.then((data) => {
-      //切换成横屏
-      let orientation = window.Orientation.LANDSCAPE;
+      let orientation = window.Orientation.PORTRAIT;
       data.setPreferredOrientation(orientation, (err) => {
       });
     })

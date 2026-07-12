@@ -75,55 +75,110 @@ class RockerDrawUtils {
    * 绘制背景
    */
   private drawBackground() {
-
-    // @todo 这段代码在api9 HarmonyOS4.0 （Mate50）下验证失败
     if (this.rockerOptions.getBackgroundStyle) {
-      //  如果自定义图形,那么使用自定义图形进行绘制
-      let img = this.rockerOptions.getBackgroundStyle();
-      this.ctx.drawImage(img, 0, 0, this.width, this.height);
-      return;
+      try {
+        const img = this.rockerOptions.getBackgroundStyle();
+        this.ctx.drawImage(img, 0, 0, this.width, this.height);
+        return;
+      } catch (e) {
+        console.warn(TAG, 'drawImage background failed, use vector fallback');
+      }
     }
+    this.drawVectorBackground();
+  }
 
-    // 如果没有自定义图形,那么用默认圆圈填充
-    this.ctx.strokeStyle = '#000';
-    let rule2D: Path2D = new Path2D();
-    let w = this.width, h = this.height; //组件宽高
-    rule2D.arc(w / 2, h / 2, w / 2, 0, 360);
-    this.ctx.stroke(rule2D);
+  /** 矢量绘制背景轮盘（真机 ImageBitmap 失败时的回退，配色对齐 SVG） */
+  private drawVectorBackground(): void {
+    const cx = this.width / 2;
+    const cy = this.height / 2;
+    const r = Math.min(this.width, this.height) / 2;
+
+    const outerGrad = this.ctx.createRadialGradient(cx, cy, r * 0.2, cx, cy, r);
+    outerGrad.addColorStop(0, '#5a5768');
+    outerGrad.addColorStop(1, '#8e89a6');
+    this.ctx.fillStyle = outerGrad;
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    this.ctx.fillStyle = '#838288';
+    this.ctx.beginPath();
+    this.ctx.arc(cx, cy, r * 0.975, 0, Math.PI * 2);
+    this.ctx.fill();
+
+    const arrowLen = r * 0.22;
+    const arrowDist = r * 0.62;
+    this.ctx.fillStyle = '#FFFFFF';
+    this.drawDirectionArrow(cx, cy - arrowDist, arrowLen, 0);
+    this.drawDirectionArrow(cx, cy + arrowDist, arrowLen, Math.PI);
+    this.drawDirectionArrow(cx - arrowDist, cy, arrowLen, -Math.PI / 2);
+    this.drawDirectionArrow(cx + arrowDist, cy, arrowLen, Math.PI / 2);
+  }
+
+  private drawDirectionArrow(cx: number, cy: number, size: number, angle: number): void {
+    this.ctx.save();
+    this.ctx.translate(cx, cy);
+    this.ctx.rotate(angle);
+    this.ctx.beginPath();
+    this.ctx.moveTo(0, -size * 0.55);
+    this.ctx.lineTo(size * 0.45, size * 0.35);
+    this.ctx.lineTo(-size * 0.45, size * 0.35);
+    this.ctx.closePath();
+    this.ctx.fill();
+    this.ctx.restore();
   }
 
   /**
    * 绘制手指
    */
   private drawRule() {
-    // 手指半径
     let tiltR: number = this.FingerRadius;
     tiltR = this.FingerRadius < 1 ? this.width / 2 * tiltR : tiltR;
 
-    // 手指绘制映射,避免手指绘制不完全
     let x = MathUtils.mapValue(this.tiltX,
       0, this.width,
       0 + tiltR, this.width - tiltR)
     let y = MathUtils.mapValue(this.tiltY,
       0, this.height,
-      0 + tiltR, this.width - tiltR)
+      0 + tiltR, this.height - tiltR)
 
-    // @todo 这段代码在api9 HarmonyOS4.0（Mate50）下验证失败
     if (this.rockerOptions.getTiltStyle) {
-      // 如果提供了绘制图案，那么绘制
-      this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
-        x - tiltR, y - tiltR,
-        tiltR * 2, tiltR * 2,
-      )
-      return;
+      try {
+        this.ctx.drawImage(this.rockerOptions.getTiltStyle(),
+          x - tiltR, y - tiltR,
+          tiltR * 2, tiltR * 2,
+        )
+        return;
+      } catch (e) {
+        console.warn(TAG, 'drawImage knob failed, use vector fallback');
+      }
     }
+    this.drawVectorKnob(x, y, tiltR);
+  }
 
-    // 如果没有自定义图形那么进行绘制
-    this.ctx.fillStyle = '#999';
-    let rule2D: Path2D = new Path2D();
-    rule2D.arc(x, y, tiltR, 0, 360);
-    this.ctx.fill(rule2D);
+  /** 矢量绘制摇杆头（配色对齐 remote.svg） */
+  private drawVectorKnob(x: number, y: number, tiltR: number): void {
+    const knobGrad = this.ctx.createRadialGradient(
+      x - tiltR * 0.2, y - tiltR * 0.2, tiltR * 0.1,
+      x, y, tiltR
+    );
+    knobGrad.addColorStop(0, '#eceaed');
+    knobGrad.addColorStop(1, '#b8b5bc');
+    this.ctx.fillStyle = knobGrad;
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, tiltR, 0, Math.PI * 2);
+    this.ctx.fill();
 
+    this.ctx.strokeStyle = '#9a979f';
+    this.ctx.lineWidth = 2;
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, tiltR * 0.92, 0, Math.PI * 2);
+    this.ctx.stroke();
+
+    this.ctx.fillStyle = '#d5d3d6';
+    this.ctx.beginPath();
+    this.ctx.arc(x, y, tiltR * 0.35, 0, Math.PI * 2);
+    this.ctx.fill();
   }
 
   // ---------------------------getder---------------------------

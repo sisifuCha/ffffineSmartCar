@@ -17,7 +17,7 @@
     "pages": "$profile:main_pages",
     "abilities": [
       {
-        "orientation": "landscape",
+        "orientation": "portrait",
         "name": "EntryAbility",
         "srcEntry": "./ets/entryability/EntryAbility.ets",
         "description": "$string:EntryAbility_desc",
