@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "C:\\Users\\13019\\.ohos\\config\\default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.cer",
+          "certpath": "C:\\Users\\31332\\.ohos\\config\\default_ffffineSmartCar_pnpsW465k47_5Agr7tfP9Izx1ImDkgG2Rou9aHogoaU=.cer",
           "keyAlias": "debugKey",
-          "keyPassword": "0000001AACFA8BE899D01EEE1C9F0310FB7F0CD3B13FC2B4F675C85436354D13999D460D6DB9A0E86F71",
-          "profile": "C:\\Users\\13019\\.ohos\\config\\default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p7b",
+          "keyPassword": "0000001BD0ADDDD1025B16DDB2FA4090453491AC2D6496105CBD55D2751ED0D05DB7C53CB482F14015FDA9",
+          "profile": "C:\\Users\\31332\\.ohos\\config\\default_ffffineSmartCar_pnpsW465k47_5Agr7tfP9Izx1ImDkgG2Rou9aHogoaU=.p7b",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "C:\\Users\\13019\\.ohos\\config\\default_oh-ai-car-ros-app_lgJhlZK0XoNmaqNDxukcsK_Ee-aUyvlcEs8yzUK4Dlg=.p12",
-          "storePassword": "0000001ACF68421FF992F70DDA7F3E8E59AFA4900E5CC5CC6BD8C237557EE920070A60B8CDD5C273C48C"
+          "storeFile": "C:\\Users\\31332\\.ohos\\config\\default_ffffineSmartCar_pnpsW465k47_5Agr7tfP9Izx1ImDkgG2Rou9aHogoaU=.p12",
+          "storePassword": "0000001B0F92350844A4261B269C87CB97626346B5ADD6A6D20D032AE227A94ED888D075009ADD763595BB"
         }
       }
     ],

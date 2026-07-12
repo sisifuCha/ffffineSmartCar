@@ -1,27 +1,20 @@
 import { carApi } from '../CarUtill/CarApi'
 import { CarEncode } from '../CarUtill/CarEncode';
-
 import { RockerComponent, RockerOptions } from "rocker"
 
-let TAG = 'anran0';
-
-
 /**
- * 按键控制UI组件
+ * 摇杆控制 UI 组件
+ * 真机上 ImageBitmap 绘制 SVG 会失败，由 Rocker 模块内矢量绘制回退显示轮盘
  */
 @Component
 struct CarRockerComponents {
-  tiltStyle = new ImageBitmap("img/remote.svg");
-  backgroundStyle = new ImageBitmap("img/remote_background.svg");
   private lastSendTime: number = 0;
   private readonly sendIntervalMs: number = 50;
 
   build() {
     RockerComponent({
       rockerOptions: new RockerOptions({
-        tiltWidth: 0.6,
-        getTiltStyle: (): ImageBitmap => this.tiltStyle,
-        getBackgroundStyle: (): ImageBitmap => this.backgroundStyle,
+        tiltWidth: 0.38,
         tiltEvent: (tiltX: number, tiltY: number, event?: TouchEvent): void => {
           const now = Date.now();
           if (now - this.lastSendTime < this.sendIntervalMs) {
@@ -32,6 +25,8 @@ struct CarRockerComponents {
         }
       })
     })
+      .width('100%')
+      .height('100%')
   }
 }
 

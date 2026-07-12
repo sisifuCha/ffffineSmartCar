@@ -2,11 +2,15 @@
   "color": [
     {
       "name": "button_text",
-      "value": "#E3E3E7"
+      "value": "#5C5C58"
     },
     {
       "name": "text",
-      "value": "#E3E3E7"
+      "value": "#3D3D3A"
+    },
+    {
+      "name": "text_secondary",
+      "value": "#8A8A84"
     }
   ]
 }

@@ -49,7 +49,8 @@ struct CarBtnComponents {
 
       GridItem() {
         Button("停")
-          .backgroundColor($r('app.color.button_background'))
+          .fontColor('#FFFFFF')
+          .backgroundColor('#C54B4B')
           .shadow(ButtonShadow)
           .width('100%')
           .height('100%')

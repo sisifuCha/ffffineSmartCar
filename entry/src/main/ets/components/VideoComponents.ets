@@ -1,7 +1,10 @@
 import web_webview from '@ohos.web.webview'
 import { carApi } from '../CarUtill/CarApi';
 import { CarEncode } from '../CarUtill/CarEncode';
-import { ButtonShadow } from '../styles/styles';
+import { AppSession } from '../model/AppSession';
+import { AppRadius, ButtonShadow } from '../styles/styles';
+import { AppFont, StyledText, TextVariant } from '../styles/Typography';
+import { PreferencesUtils } from '../utils/PreferencesUtils';
 
 let TAG = "VideoComponents"
 
@@ -10,72 +13,135 @@ export struct VideoComponents {
   controller: web_webview.WebviewController = new web_webview.WebviewController()
   public static port: number = 6500;
   public static ip: string = "192.168.1.11"
-  // 当前是否正在录制视频
   @State isRecording: boolean = false
+  @State videoSrc: string = ''
+  @State loadFailed: boolean = false
+  @StorageLink(AppSession.KEY_TCP_CONNECTED) @Watch('onConnectChange') tcpConnected: boolean = false
+
+  aboutToAppear(): void {
+    this.syncVideoConfig();
+  }
+
+  onConnectChange(): void {
+    if (this.tcpConnected) {
+      this.loadFailed = false;
+      this.syncVideoConfig();
+    } else {
+      this.videoSrc = '';
+      this.loadFailed = false;
+    }
+  }
+
+  private async syncVideoConfig(): Promise<void> {
+    if (!this.tcpConnected) {
+      this.videoSrc = '';
+      return;
+    }
+    const net = PreferencesUtils.getInstance().netUtils;
+    VideoComponents.ip = await net.getIP();
+    VideoComponents.port = Number.parseInt(await net.getVideoPort());
+    this.videoSrc = this.buildVideoSrc();
+  }
+
+  private shouldShowWeb(): boolean {
+    return this.tcpConnected && !this.loadFailed && this.videoSrc.length > 0;
+  }
 
   build() {
-    Column() {
-      RelativeContainer() {
-
-        Web({
-          src: this.getWebSrc(),
-          controller: this.controller
-        })
-          .id("Video")
-
-        // 如果正在录制，显示小红点
-        if (this.isRecording)
-          RedRound()
-            .id("RedRound")
-            .zIndex(2)
-            .alignRules({
-              bottom: { anchor: "__container__", align: VerticalAlign.Bottom },
-              right: { anchor: "__container__", align: HorizontalAlign.End }
-            }).offset({
-            x: -30,
-            y: -30
+    Column({ space: '12vp' }) {
+      Stack({ alignContent: Alignment.Center }) {
+        if (this.shouldShowWeb()) {
+          Web({
+            src: this.videoSrc,
+            controller: this.controller
           })
+            .width('100%')
+            .aspectRatio(16 / 9)
+            .borderRadius(AppRadius.MD)
+            .clip(true)
+            .backgroundColor('#EEEDEA')
+            .onErrorReceive(() => {
+              this.loadFailed = true;
+            })
+            .onHttpErrorReceive(() => {
+              this.loadFailed = true;
+            })
+        } else {
+          Column({ space: '6vp' }) {
+            StyledText({
+              content: this.tcpConnected && this.loadFailed ? '视频加载失败' : '暂无画面',
+              variant: TextVariant.Body,
+              textAlign: TextAlign.Center,
+              hasCustomColor: true,
+              customColor: $r('app.color.text_secondary')
+            })
+            StyledText({
+              content: this.tcpConnected ?
+                '请确认摄像头服务已开启（视频端口 6500）' :
+                '连接小车后将显示实时视频',
+              variant: TextVariant.Caption,
+              textAlign: TextAlign.Center
+            })
+          }
+          .width('100%')
+          .aspectRatio(16 / 9)
+          .justifyContent(FlexAlign.Center)
+          .borderRadius(AppRadius.MD)
+          .backgroundColor('#EEEDEA')
+        }
+
+        if (this.isRecording && this.shouldShowWeb()) {
+          RedRound()
+            .margin({ right: '12vp', bottom: '12vp' })
+        }
       }
+      .width('100%')
+      .alignContent(Alignment.BottomEnd)
 
-      .width('300vp')
-      .height('200vp')
-
-      Row() {
-        if (this.isRecording == false) {
-          // 如果不在录像，那么允许拍摄
-          Button("拍摄")
+      Row({ space: '10vp' }) {
+        if (!this.isRecording) {
+          Button('拍摄')
+            .layoutWeight(1)
+            .height('40vp')
+            .fontSize('14fp')
+            .fontFamily(AppFont.FAMILY)
+            .fontColor($r('app.color.button_text_on_primary'))
             .backgroundColor($r('app.color.button_background'))
+            .borderRadius(AppRadius.SM)
             .shadow(ButtonShadow)
             .onClick(() => {
               carApi.send(CarEncode.TakePhotosEncode());
             })
         }
 
-
-        Button(this.isRecording == false ? "录制" : "结束")
+        Button(this.isRecording ? '结束' : '录制')
+          .layoutWeight(1)
+          .height('40vp')
+          .fontSize('14fp')
+          .fontFamily(AppFont.FAMILY)
+          .fontColor($r('app.color.button_text_on_primary'))
           .backgroundColor($r('app.color.button_background'))
+          .borderRadius(AppRadius.SM)
           .shadow(ButtonShadow)
           .onClick(() => {
-            if (this.isRecording == true) {
-              // 如果正在录制那么暂停视频
+            if (this.isRecording) {
               carApi.send(CarEncode.CloselRecordingEncode());
             } else {
-              // 如果不在录制那么开始录制
               carApi.send(CarEncode.StartRecordingEncode());
             }
             this.isRecording = !this.isRecording;
           })
-
       }
-    }.justifyContent(FlexAlign.Center)
-
+      .width('100%')
+    }
+    .width('100%')
+    .justifyContent(FlexAlign.Center)
   }
 
-  getWebSrc() {
-    let v = `http://${VideoComponents.ip}:${VideoComponents.port}/index2`
-    console.log(TAG, "getWebSrc()", v)
+  private buildVideoSrc(): string {
+    const v = `http://${VideoComponents.ip}:${VideoComponents.port}/index2`
+    console.log(TAG, "buildVideoSrc()", v)
     return v
-
   }
 }
 
@@ -85,26 +151,16 @@ struct RedRound {
 
   aboutToAppear(): void {
     setInterval(() => {
-      // console.log('Hello, World!');
       this.isShow = !this.isShow;
     }, 1000);
-
   }
 
   build() {
     Text()
       .width('10vp')
       .height('10vp')
-      .backgroundColor(Color.Red)
-      .animation({
-        duration: 1200,
-        curve: Curve.Friction,
-        delay: 500,
-        iterations: -1, // 设置-1表示动画无限循环
-      })
-      .border({
-        radius: "5vp"
-      })
+      .backgroundColor('#C9A89A')
+      .borderRadius('5vp')
       .visibility(this.isShow ? Visibility.Visible : Visibility.None)
   }
 }

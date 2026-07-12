@@ -1,7 +1,9 @@
 import { DualCarStatus, DualCarStatusManager } from '../tcp/DualCarStatusManager'
+import { AppRadius } from '../styles/styles'
+import { StyledText, TextVariant } from '../styles/Typography'
 
 /**
- * 双车状态条：显示双车同步 / 降级主车单控
+ * 双车状态条
  */
 @Component
 export struct DualCarStatusBar {
@@ -27,14 +29,19 @@ export struct DualCarStatusBar {
   build() {
     if (this.visible) {
       Row() {
-        Text(this.statusText)
-          .fontSize('14fp')
-          .fontColor(this.isWarning ? Color.White : $r('app.color.button_text'))
+        StyledText({
+          content: this.statusText,
+          variant: TextVariant.Caption,
+          hasCustomColor: true,
+          customColor: this.isWarning ?
+            $r('app.color.button_text_on_primary') : $r('app.color.text')
+        })
       }
       .width('100%')
-      .padding({ left: '12vp', right: '12vp', top: '6vp', bottom: '6vp' })
-      .backgroundColor(this.isWarning ? '#CC8B0000' : $r('app.color.button_background'))
-      .borderRadius('6vp')
+      .padding({ left: '14vp', right: '14vp', top: '8vp', bottom: '8vp' })
+      .backgroundColor(this.isWarning ?
+        $r('app.color.warning_background') : $r('app.color.button_select_background'))
+      .borderRadius(AppRadius.MD)
     }
   }
 }
