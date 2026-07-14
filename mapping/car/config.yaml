@@ -1,0 +1,30 @@
+# 传感转发配置（部署到 Jetson 后按实车修改）
+
+ws_host: "0.0.0.0"
+ws_port: 6602
+publish_hz: 5
+
+# ROS 2 话题（与 Docker 建图栈一致）
+scan_topic: "/scan"
+odom_topic: "/odom"
+use_odom: true
+
+# SLAM 校正后的 pose：查 tf map→base_link（和 rviz2 用的一样）
+# 这才是 PC 端栅格地图做坐标变换应该用的位姿，避免 odom 漂移
+use_pose: true
+map_frame: "map"
+base_frame: "base_link"
+
+qos_depth: 10
+
+# 与 Docker launch 相同的 DOMAIN
+ros_domain_id: 30
+
+# 可选：自定义 setup.bash 路径
+# ros_setup: "/opt/ros/foxy/setup.bash"
+
+# ROS 连接失败时重试间隔（秒）
+ros_retry_sec: 10
+
+# 降采样：最多保留多少个测距点（减轻 WiFi 与 PC 负担）
+max_ranges: 360

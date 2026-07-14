@@ -1,0 +1,38 @@
+server:
+  host: "127.0.0.1"
+  port: 8080
+
+car:
+  ip: "192.168.137.174"
+  tcp_port: 6000
+  video_port: 6500
+  video_path: "/index2"
+  sensor_ws_port: 6602
+
+slam:
+  resolution: 0.05          # 米/格
+  map_size_m: 20.0          # 地图边长（米）
+  hit_prob: 0.85
+  miss_prob: 0.45
+
+explorer:
+  goal_tolerance_m: 0.25
+  max_linear: 40            # cmd10 速度 -100~100
+  max_angular_deg: 30
+  step_timeout_sec: 30
+
+# 视觉沿墙/栏杆（PC 端 OpenCV 识别）
+vision:
+  # 先解析 index2 页面里的 stream 地址，再依次尝试下列 URL
+  discover_page: "http://{ip}:6500/index2"
+  stream_urls:
+    - "http://{ip}:6500/?action=stream"
+    - "http://{ip}:6500/stream"
+    - "http://{ip}:6500/video"
+    - "http://{ip}:6500/videofeed"
+    - "http://{ip}:6500/mjpeg"
+  target_distance_px: 120
+  forward_speed: 28           # 前进速度 cmd10
+  max_lateral: 35             # 横向修正上限
+  control_hz: 10
+  obstacle_stop_ratio: 0.12   # 前方障碍边缘占比超过则停车

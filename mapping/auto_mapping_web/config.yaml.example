@@ -1,0 +1,46 @@
+# Windows PC 端自动建图配置 — 复制为 config.yaml 后修改
+
+server:
+  host: "0.0.0.0"
+  port: 8080
+  ui_refresh_ms: 150          # 浏览器刷新视频间隔（毫秒，越小越流畅）
+
+car:
+  ip: "192.168.137.174"        # ★ 必须等于小车当前 IP
+  control_tcp_port: 6000      # app.py 运动控制
+  video_http_port: 6500       # app.py 视频 MJPEG
+  sensor_ws_port: 6602        # 小车 sensor_relay.py WebSocket（@MAP/@POSE/@SCAN）
+  car_type: 1                 # X3 = 1
+
+mapping:
+  resolution: 0.05            # 米/格
+  map_size_m: 24
+  max_range_m: 8.0
+
+vision:
+  enabled: true
+  follow_side: "right"        # 沿右墙
+  # 纯 OpenCV 墙体检测，无需 YOLO 权重文件
+  conf_threshold: 0.35
+  target_wall_px: 120         # 目标离墙像素距离（画面右侧）
+  target_dist_m: 0.45         # 雷达目标离墙距离（米）
+
+video:
+  target_fps: 15              # PC 端处理/输出帧率上限
+  jpeg_quality: 70            # 越小体积越小、传输越快
+  yolo_every_n: 1             # 每 N 帧跑一次视觉分析（OpenCV 很快，可以每帧）
+  buffer_drain: 4             # 丢弃 MJPEG 缓冲中的旧帧数
+
+control:
+  command_interval_ms: 200    # 保留兼容；步进模式下不直接用
+  step_duration_ms: 1500      # 直走/偏转执行时长（毫秒），到点自动停车
+  turn_step_duration_ms: 500  # 原地旋转避障时长（毫秒），比前进短，防止转过头
+  u_turn_duration_ms: 1300    # 掉头时长（毫秒），走廊末端转 180°
+  step_pause_ms: 600          # 一步结束后停车等待时长（毫秒），给雷达/视觉刷新
+  forward_speed: 0.15         # 前进速度 0.0~1.0（越大越快，室内建议 0.08~0.20）
+  slow_speed: 0.06            # 慢速前进速度（前方偏近时用）
+  turn_speed: 0.4             # 转弯速度（当前转弯用方向键，此值保留备用）
+  steer_speed: 0.08           # 轻微偏转侧向速度（贴墙太近时弧线远离，比避障转弯温和）
+  front_stop_m: 0.80           # 雷达前方安全距离（低于则转弯，不可前进）
+  front_slow_m: 1.30           # 低于此距离慢速前进
+  auto_start: false           # 启动后自动开始建图

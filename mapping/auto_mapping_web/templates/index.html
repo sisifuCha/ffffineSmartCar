@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>自动建图 · PC 端</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #1a1a2e; color: #eee; padding: 16px; }
+    h1 { font-size: 1.3rem; margin-bottom: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .panel { background: #16213e; border-radius: 8px; padding: 12px; }
+    .panel h2 { font-size: 1rem; color: #7fdbff; margin-bottom: 8px; }
+    img { width: 100%; border-radius: 4px; background: #000; min-height: 200px; }
+    .status { font-size: 0.9rem; line-height: 1.8; }
+    .ok { color: #2ecc71; }
+    .warn { color: #f39c12; }
+    button { padding: 8px 20px; margin: 4px; border: none; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+    .btn-start { background: #27ae60; color: #fff; }
+    .btn-stop { background: #c0392b; color: #fff; }
+    .action { font-size: 1.4rem; color: #f1c40f; margin: 8px 0; }
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <h1>自动建图控制台（Windows PC）</h1>
+  <p style="margin-bottom:12px;color:#aaa">
+    小车先跑 <code>mapping/car</code> 的 <code>sensor_relay</code>（:6602）与视频/遥控服务，再点「开始自动建图」
+  </p>
+  <div style="margin-bottom:12px">
+    <button class="btn-start" onclick="startAuto()">开始自动建图</button>
+    <button class="btn-stop" onclick="stopAuto()">停止</button>
+  </div>
+  <div class="grid">
+    <div class="panel">
+      <h2>SLAM 地图</h2>
+      <img id="map" src="/map.png" alt="map">
+    </div>
+    <div class="panel">
+      <h2>视觉（OpenCV 墙体识别）</h2>
+      <img id="video" src="/video.jpg" alt="video">
+    </div>
+  </div>
+  <div class="panel" style="margin-top:16px">
+    <h2>状态</h2>
+    <div class="status" id="status">加载中...</div>
+    <div class="action" id="action">—</div>
+    <div id="guide"></div>
+  </div>
+  <script>
+    async function startAuto() {
+      await fetch('/api/start', { method: 'POST' });
+      refresh();
+    }
+    async function stopAuto() {
+      await fetch('/api/stop', { method: 'POST' });
+      refresh();
+    }
+    function refreshVideo() {
+      document.getElementById('video').src = '/video.jpg?t=' + Date.now();
+    }
+    function refreshMap() {
+      document.getElementById('map').src = '/map.png?t=' + Date.now();
+    }
+    function refresh() { refreshVideo(); refreshMap(); }
+    const UI_MS = __UI_REFRESH_MS__;
+    setInterval(refreshVideo, UI_MS);
+    setInterval(refreshMap, Math.max(UI_MS * 2, 250));
+    const ws = new WebSocket('ws://' + location.host + '/ws/ui');
+    ws.onmessage = (e) => {
+      const d = JSON.parse(e.data);
+      const sens = d.sensor_ok
+        ? (d.scan_count > 0 ? '<span class="ok">雷达 ✓</span>' : '<span class="warn">雷达已连，等待 /scan...</span>')
+        : '<span class="warn">雷达 ✗ ' + (d.sensor_error || '未连接') + '</span>';
+      const mapFlag = d.has_remote_map
+        ? '<span class="ok">gmapping地图 ✓ (' + d.remote_map_count + '帧)</span>'
+        : '<span class="warn">等待 @MAP...</span>';
+      const poseFlag = d.has_pose
+        ? '<span class="ok">SLAM位姿 ✓</span>'
+        : (d.has_odom
+            ? '<span class="warn">里程计 ✓ (无SLAM校正)</span>'
+            : '<span class="warn">位姿 ✗</span>');
+      const auto = d.auto_running ? '<span class="ok">自动建图中</span>' : '<span class="warn">已停止</span>';
+      const vis = d.vision && d.vision.valid ? '<span class="ok">视觉 ✓</span>' : '<span class="warn">视觉 —</span>';
+      const vid = d.video_ok ? '<span class="ok">视频 ✓</span>' : '<span class="warn">视频 ✗ ' + (d.video_error || '未连接') + '</span>';
+      document.getElementById('status').innerHTML =
+        auto + ' &nbsp; ' + sens + ' &nbsp; ' + mapFlag + ' &nbsp; ' + poseFlag + ' &nbsp; ' + vis + ' &nbsp; ' + vid +
+        '<br>小车 IP(配置): ' + (d.car_ip || '?') + ' &nbsp; 地图帧: ' + (d.remote_map_count ?? 0) + ' &nbsp; 雷达帧: ' + d.scan_count + ' &nbsp; 视频帧: ' + (d.frame_seq || 0) +
+        '<br>位姿: x=' + (d.pose?.x?.toFixed(2)||'?') + ' y=' + (d.pose?.y?.toFixed(2)||'?') +
+        ' θ=' + (d.pose?.theta?.toFixed(2)||'?') +
+        '<br>离墙像素: ' + (d.vision?.wall_dist_px ?? '—') +
+        ' &nbsp; 前沿: ' + (d.vision?.corner_hint ?? '—');
+      document.getElementById('action').textContent = d.plan?.action || 'STOP';
+      document.getElementById('guide').textContent = d.plan?.guide_cn || '';
+    };
+  </script>
+</body>
+</html>

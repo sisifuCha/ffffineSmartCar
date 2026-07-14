@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>小车自动建图</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <header>
+    <h1>本地 Web 建图</h1>
+    <div id="status">未连接</div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <h2>视频</h2>
+      <div class="video-wrap">
+        <iframe id="video" title="car video" src="/api/video"></iframe>
+      </div>
+      <h3 class="sub">视觉识别（沿墙调试）</h3>
+      <div class="vision-wrap">
+        <img id="visionDebug" alt="vision debug" src="/api/vision/debug.jpg" />
+      </div>
+      <div class="vision-info" id="visionInfo">墙距: — | 视频: 未连接</div>
+    </section>
+
+    <section class="panel">
+      <h2>地图</h2>
+      <canvas id="map" width="400" height="400"></canvas>
+      <div class="pose" id="pose">x: 0 y: 0 θ: 0°</div>
+    </section>
+  </main>
+
+  <section class="controls">
+    <button id="btnConnect">连接传感器</button>
+    <button id="btnStartMap">开始建图</button>
+    <button id="btnStopMap">停止并保存</button>
+    <button id="btnExplore">自动探索</button>
+    <button id="btnStopExplore" class="danger">停止探索</button>
+    <span class="sep"></span>
+    <button id="btnWallLeft" class="accent">沿左墙走</button>
+    <button id="btnWallRight" class="accent">沿右墙走</button>
+    <button id="btnStopWall" class="danger">停止沿墙</button>
+    <label class="dist-label">保持距离(px)
+      <input id="wallDistance" type="number" value="120" min="40" max="300" step="10" />
+    </label>
+    <button id="btnStop" class="danger">急停</button>
+  </section>
+
+  <section class="hint">
+  <p>WASD 手动遥控（需已连接小车 TCP）。建图时不要用手机 App 同时连 6000。</p>
+  <p>沿墙/栏杆：PC 用 OpenCV 识别竖直边缘，自动横移保持 <code>保持距离</code> 像素并前进；前方障碍过多会停车。</p>
+  </section>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

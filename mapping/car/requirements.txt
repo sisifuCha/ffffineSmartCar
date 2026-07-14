@@ -1,0 +1,4 @@
+PyYAML>=6.0
+websockets>=12.0
+
+# rclpy / sensor_msgs / nav_msgs 随 ROS 2 系统安装（Foxy 等），不在 pip 里
