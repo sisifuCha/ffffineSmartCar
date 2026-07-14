@@ -5,6 +5,7 @@ import promptAction from '@ohos.promptAction';
 import { carApi } from '../CarUtill/CarApi';
 import { AppSession } from '../model/AppSession';
 import { CarStatusStore } from '../model/CarStatusStore';
+import { SensorDataStore, SensorEntry } from '../model/SensorDataStore';
 import { AppRadius, ButtonShadow, CardShadow } from '../styles/styles';
 import { AppFont, StyledText, TextVariant } from '../styles/Typography';
 import { TCPClientManager } from '../tcp/TCPClientManager';
@@ -19,6 +20,9 @@ export struct StatusPanel {
   @StorageLink(CarStatusStore.KEY_LAST_UPDATE) lastUpdate: number = 0;
   @StorageLink(AppSession.KEY_VIEW_ONLY) viewOnly: boolean = false;
   @StorageLink(AppSession.KEY_TCP_CONNECTED) tcpConnected: boolean = false;
+  @StorageLink(SensorDataStore.KEY_ENTRIES) sensorEntries: SensorEntry[] = [];
+  @StorageLink(SensorDataStore.KEY_CONNECTED) sensorConnected: boolean = false;
+  @StorageLink(SensorDataStore.KEY_LAST_UPDATE) sensorLastUpdate: number = 0;
 
   @State alertEnabled: boolean = true;
   @State alertThreshold: string = '7.2';
@@ -46,6 +50,24 @@ export struct StatusPanel {
 
   private formatVoltage(v: number): string {
     return v.toFixed(1);
+  }
+
+  /** 将 JSON key 转为可读的中文/英文标签 */
+  private formatSensorKey(key: string): string {
+    const known: Record<string, string> = {
+      'battery': '电池电压',
+      'voltage': '电压',
+      'temperature': '温度',
+      'temp': '温度',
+      'speed': '速度',
+      'angular': '角速度',
+      'distance': '距离',
+      'humidity': '湿度',
+      'current': '电流',
+      'power': '功率',
+      'rpm': '转速',
+    };
+    return known[key] ?? key;
   }
 
   private async startBatteryPolling(): Promise<void> {
@@ -195,6 +217,74 @@ export struct StatusPanel {
         .width('100%')
         .padding('20vp')
         .alignItems(HorizontalAlign.Center)
+        .backgroundColor($r('app.color.card_background'))
+        .borderRadius(AppRadius.LG)
+        .border({ width: 1, color: $r('app.color.card_border') })
+        .shadow(CardShadow)
+
+        Column({ space: '16vp' }) {
+          Text('HTTP 传感器数据')
+            .fontFamily(AppFont.FAMILY)
+            .fontSize('15fp')
+            .fontWeight(FontWeight.Medium)
+            .fontColor($r('app.color.text'))
+            .width('100%')
+          Text('端口 5001 回传的 JSON 传感器键值对（3 秒自动刷新）')
+            .fontFamily(AppFont.FAMILY)
+            .fontSize('12fp')
+            .fontColor($r('app.color.text_secondary'))
+            .width('100%')
+
+          if (this.sensorConnected && this.sensorEntries.length > 0) {
+            Column({ space: '8vp' }) {
+              ForEach(this.sensorEntries, (entry: SensorEntry) => {
+                Row() {
+                  Text(this.formatSensorKey(entry.key))
+                    .fontFamily(AppFont.FAMILY)
+                    .fontSize('14fp')
+                    .fontColor($r('app.color.text_secondary'))
+                    .layoutWeight(1)
+                  Text(entry.value)
+                    .fontFamily(AppFont.FAMILY)
+                    .fontSize('15fp')
+                    .fontWeight(FontWeight.Medium)
+                    .fontColor($r('app.color.text'))
+                }
+                .width('100%')
+                .padding({ top: '6vp', bottom: '6vp' })
+                .border({
+                  width: { bottom: 0.5 },
+                  color: $r('app.color.card_border')
+                })
+              }, (entry: SensorEntry) => entry.key)
+            }
+            .width('100%')
+            .padding({ top: '4vp', bottom: '4vp' })
+
+            if (this.sensorLastUpdate > 0) {
+              StyledText({
+                content: `最近更新：${new Date(this.sensorLastUpdate).toLocaleTimeString()}`,
+                variant: TextVariant.Caption
+              })
+            }
+          } else if (this.sensorConnected) {
+            Text('暂无传感器数据')
+              .fontFamily(AppFont.FAMILY)
+              .fontSize('13fp')
+              .fontColor($r('app.color.text_secondary'))
+              .width('100%')
+              .padding({ top: '8vp', bottom: '8vp' })
+          } else {
+            Text('等待传感器数据…（需小车运行 HTTP 传感器服务）')
+              .fontFamily(AppFont.FAMILY)
+              .fontSize('13fp')
+              .fontColor($r('app.color.text_secondary'))
+              .width('100%')
+              .padding({ top: '8vp', bottom: '8vp' })
+          }
+        }
+        .width('100%')
+        .padding('20vp')
         .backgroundColor($r('app.color.card_background'))
         .borderRadius(AppRadius.LG)
         .border({ width: 1, color: $r('app.color.card_border') })

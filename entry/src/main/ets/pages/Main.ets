@@ -6,6 +6,7 @@ import { BottomNavBar, NavTabItem } from '../components/BottomNavBar';
 import { AppSession } from '../model/AppSession';
 import { TCPClientSendUtils } from '../tcp/TCPClientSendUtils';
 import { TCPClientManager } from '../tcp/TCPClientManager';
+import { SensorHttpClient } from '../http/SensorHttpClient';
 import { MapPanel } from './MapPage';
 import { MecanumWheelPanel } from './MecanumWheel';
 import { RemoteControlPanel } from './RemoteControl';
@@ -42,7 +43,12 @@ struct Main {
     this.ensureServices();
   }
 
+  aboutToDisappear(): void {
+    SensorHttpClient.getInstance().stopPolling();
+  }
+
   private async ensureServices(): Promise<void> {
+    SensorHttpClient.getInstance().startPolling();
     if (this.viewOnly) {
       return;
     }

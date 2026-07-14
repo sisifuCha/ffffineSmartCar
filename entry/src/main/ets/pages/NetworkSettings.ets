@@ -51,6 +51,7 @@ struct LoginComponent {
   @State ip: string = "192.168.1.11"
   @State tcpPort: string = "6000"
   @State videoPort: string = "6500"
+  @State sensorPort: string = "5001"
   @State detectVideo: boolean = true
   @State slaveIp: string = "192.168.1.12"
   @State slavePort: string = "6001"
@@ -72,6 +73,7 @@ struct LoginComponent {
     netUtils.getIP().then((v: string) => this.ip = v)
     netUtils.getTcpPort().then((v: string) => this.tcpPort = v)
     netUtils.getVideoPort().then((v: string) => this.videoPort = v)
+    netUtils.getSensorPort().then((v: string) => this.sensorPort = v)
     netUtils.getDetectVideoEnabled().then((v: boolean) => {
       this.detectVideo = v
       if (v && this.videoPort === '6500') {
@@ -88,6 +90,7 @@ struct LoginComponent {
     await netUtils.setIp(this.ip)
     await netUtils.setTcpPort(this.tcpPort)
     await netUtils.setVideoPort(this.videoPort)
+    await netUtils.setSensorPort(this.sensorPort)
     await netUtils.setDetectVideoEnabled(this.detectVideo)
     await netUtils.setSlaveIp(this.slaveIp)
     await netUtils.setSlavePort(this.slavePort)
@@ -139,6 +142,12 @@ struct LoginComponent {
           hint: this.detectVideo ? 'YOLO 检测预览，默认 8090（需 Jetson 运行 start_detect_preview.sh）' : '摄像头画面端口，默认 6500',
           value: this.videoPort,
           onChange: (v: string) => this.videoPort = v
+        })
+        SettingField({
+          label: '传感器端口',
+          hint: 'HTTP 传感器数据端口，默认 5001（JSON 键值对）',
+          value: this.sensorPort,
+          onChange: (v: string) => this.sensorPort = v
         })
 
         Row({ space: '10vp' }) {

@@ -63,6 +63,8 @@ export class NetInfoPreferencesUtils {
   public static readonly KEY_DUAL_MODE = "KEY_DUAL_MODE";
   /** true=遥控页显示 YOLO 检测画面(8090)，false=原始摄像头(6500) */
   public static readonly KEY_DETECT_VIDEO = "KEY_DETECT_VIDEO";
+  /** HTTP 传感器数据端口（默认 5001），用于获取额外传感器 JSON 数据 */
+  public static readonly KEY_SENSOR_PORT = "KEY_SENSOR_PORT";
 
   private prefValue: preferences.Preferences | undefined = undefined;
   private initPromise: Promise<void> | undefined = undefined;
@@ -144,6 +146,18 @@ export class NetInfoPreferencesUtils {
   async setDetectVideoEnabled(enabled: boolean): Promise<void> {
     const pref = await this.ensureReady();
     await pref.put(NetInfoPreferencesUtils.KEY_DETECT_VIDEO, enabled);
+    await pref.flush();
+  }
+
+  async getSensorPort(): Promise<string> {
+    const pref = await this.ensureReady();
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_SENSOR_PORT, '5001');
+    return `${v}`;
+  }
+
+  async setSensorPort(v: string): Promise<void> {
+    const pref = await this.ensureReady();
+    await pref.put(NetInfoPreferencesUtils.KEY_SENSOR_PORT, v);
     await pref.flush();
   }
 
