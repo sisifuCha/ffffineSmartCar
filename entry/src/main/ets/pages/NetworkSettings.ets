@@ -51,6 +51,7 @@ struct LoginComponent {
   @State ip: string = "192.168.1.11"
   @State tcpPort: string = "6000"
   @State videoPort: string = "6500"
+  @State detectVideo: boolean = true
   @State slaveIp: string = "192.168.1.12"
   @State slavePort: string = "6001"
   @State dualMode: boolean = false
@@ -71,6 +72,12 @@ struct LoginComponent {
     netUtils.getIP().then((v: string) => this.ip = v)
     netUtils.getTcpPort().then((v: string) => this.tcpPort = v)
     netUtils.getVideoPort().then((v: string) => this.videoPort = v)
+    netUtils.getDetectVideoEnabled().then((v: boolean) => {
+      this.detectVideo = v
+      if (v && this.videoPort === '6500') {
+        this.videoPort = '8090'
+      }
+    })
     netUtils.getSlaveIp().then((v: string) => this.slaveIp = v)
     netUtils.getSlavePort().then((v: string) => this.slavePort = v)
     netUtils.getDualMode().then((v: boolean) => this.dualMode = v)
@@ -81,6 +88,7 @@ struct LoginComponent {
     await netUtils.setIp(this.ip)
     await netUtils.setTcpPort(this.tcpPort)
     await netUtils.setVideoPort(this.videoPort)
+    await netUtils.setDetectVideoEnabled(this.detectVideo)
     await netUtils.setSlaveIp(this.slaveIp)
     await netUtils.setSlavePort(this.slavePort)
     await netUtils.setDualMode(this.dualMode)
@@ -127,11 +135,29 @@ struct LoginComponent {
           onChange: (v: string) => this.tcpPort = v
         })
         SettingField({
-          label: '视频端口',
-          hint: '摄像头画面端口，默认 6500',
+          label: this.detectVideo ? '检测画面端口' : '视频端口',
+          hint: this.detectVideo ? 'YOLO 检测预览，默认 8090（需 Jetson 运行 start_detect_preview.sh）' : '摄像头画面端口，默认 6500',
           value: this.videoPort,
           onChange: (v: string) => this.videoPort = v
         })
+
+        Row({ space: '10vp' }) {
+          Toggle({ type: ToggleType.Switch, isOn: this.detectVideo })
+            .onChange((v: boolean) => {
+              this.detectVideo = v
+              if (v && this.videoPort === '6500') {
+                this.videoPort = '8090'
+              } else if (!v && this.videoPort === '8090') {
+                this.videoPort = '6500'
+              }
+            })
+          Text('AI 检测画面（水瓶/人等识别框）')
+            .fontFamily(AppFont.FAMILY)
+            .fontSize('15fp')
+            .fontColor($r('app.color.text'))
+        }
+        .width('100%')
+        .padding({ left: '4vp' })
 
         Row({ space: '10vp' }) {
           Toggle({ type: ToggleType.Switch, isOn: this.dualMode })

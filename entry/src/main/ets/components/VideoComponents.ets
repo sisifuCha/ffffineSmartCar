@@ -16,6 +16,7 @@ export struct VideoComponents {
   @State isRecording: boolean = false
   @State videoSrc: string = ''
   @State loadFailed: boolean = false
+  @State detectVideo: boolean = true
   @StorageLink(AppSession.KEY_TCP_CONNECTED) @Watch('onConnectChange') tcpConnected: boolean = false
 
   aboutToAppear(): void {
@@ -40,6 +41,7 @@ export struct VideoComponents {
     const net = PreferencesUtils.getInstance().netUtils;
     VideoComponents.ip = await net.getIP();
     VideoComponents.port = Number.parseInt(await net.getVideoPort());
+    this.detectVideo = await net.getDetectVideoEnabled();
     this.videoSrc = this.buildVideoSrc();
   }
 
@@ -77,8 +79,10 @@ export struct VideoComponents {
             })
             StyledText({
               content: this.tcpConnected ?
-                '请确认摄像头服务已开启（视频端口 6500）' :
-                '连接小车后将显示实时视频',
+                (this.detectVideo ?
+                  `请先在 Jetson 启动检测：bash ~/temp/vision/start_detect_preview.sh（端口 ${VideoComponents.port}）` :
+                  '请确认摄像头服务已开启（视频端口 6500）') :
+                '连接小车后将显示实时画面',
               variant: TextVariant.Caption,
               textAlign: TextAlign.Center
             })
@@ -139,7 +143,9 @@ export struct VideoComponents {
   }
 
   private buildVideoSrc(): string {
-    const v = `http://${VideoComponents.ip}:${VideoComponents.port}/index2`
+    const v = this.detectVideo ?
+      `http://${VideoComponents.ip}:${VideoComponents.port}/` :
+      `http://${VideoComponents.ip}:${VideoComponents.port}/index2`;
     console.log(TAG, "buildVideoSrc()", v)
     return v
   }

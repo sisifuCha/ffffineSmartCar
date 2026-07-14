@@ -61,6 +61,8 @@ export class NetInfoPreferencesUtils {
   public static readonly KEY_SLAVE_IP = "KEY_SLAVE_IP";
   public static readonly KEY_SLAVE_PORT = "KEY_SLAVE_PORT";
   public static readonly KEY_DUAL_MODE = "KEY_DUAL_MODE";
+  /** true=遥控页显示 YOLO 检测画面(8090)，false=原始摄像头(6500) */
+  public static readonly KEY_DETECT_VIDEO = "KEY_DETECT_VIDEO";
 
   private prefValue: preferences.Preferences | undefined = undefined;
   private initPromise: Promise<void> | undefined = undefined;
@@ -127,8 +129,22 @@ export class NetInfoPreferencesUtils {
 
   async getVideoPort(): Promise<string> {
     const pref = await this.ensureReady();
-    const v = await pref.get(NetInfoPreferencesUtils.KEY_VIDEO_PORT, '6500');
+    const detect = await this.getDetectVideoEnabled();
+    const fallback = detect ? '8090' : '6500';
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_VIDEO_PORT, fallback);
     return `${v}`;
+  }
+
+  async getDetectVideoEnabled(): Promise<boolean> {
+    const pref = await this.ensureReady();
+    const v = await pref.get(NetInfoPreferencesUtils.KEY_DETECT_VIDEO, true);
+    return Boolean(v);
+  }
+
+  async setDetectVideoEnabled(enabled: boolean): Promise<void> {
+    const pref = await this.ensureReady();
+    await pref.put(NetInfoPreferencesUtils.KEY_DETECT_VIDEO, enabled);
+    await pref.flush();
   }
 
   async getSlaveIp(): Promise<string> {

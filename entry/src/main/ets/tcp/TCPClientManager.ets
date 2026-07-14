@@ -83,7 +83,8 @@ export class TCPClientManager {
       // family?: number,
       port: 12345
     },
-    timeout: 3000
+    // 真机偶发慢；3s 偏紧，容易停在「连接小车 TCP」
+    timeout: 8000
   }
 
   /**
@@ -133,11 +134,15 @@ export class TCPClientManager {
       result.stage = '连接小车 TCP';
       await this.socket.connect(this.options);
 
-      if (!(await this.isConnect())) {
-        result.stage = '校验连接状态';
-        result.reason = '连接超时或未收到响应（等待 3 秒），小车可能未在该端口提供服务';
-        await this.resetSocketAsync();
-        return result;
+      // HarmonyOS 上 connect() 成功后 getState().isConnected 偶发仍为 false，
+      // 旧逻辑会误报失败。只要 connect 未抛错，再短等一次状态即可。
+      let ok = await this.isConnect();
+      if (!ok) {
+        await TCPClientManager.delay(200);
+        ok = await this.isConnect();
+      }
+      if (!ok) {
+        console.warn(TAG, 'getState 未及时变为 connected，仍按 connect 成功继续');
       }
 
       console.log(TAG, '连接成功', result.target);
