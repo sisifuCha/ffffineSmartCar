@@ -33,14 +33,12 @@ video:
 
 control:
   command_interval_ms: 200    # 保留兼容；步进模式下不直接用
-  step_duration_ms: 1500      # 直走/偏转执行时长（毫秒），到点自动停车
-  turn_step_duration_ms: 500  # 原地旋转避障时长（毫秒），比前进短，防止转过头
-  u_turn_duration_ms: 1300    # 掉头时长（毫秒），走廊末端转 180°
+  step_duration_ms: 1200      # 每个动作执行时长（毫秒），到点自动停车
+  turn_step_duration_ms: 500  # 原地旋转执行时长（毫秒），比前进短，防止转过头
   step_pause_ms: 600          # 一步结束后停车等待时长（毫秒），给雷达/视觉刷新
   forward_speed: 0.15         # 前进速度 0.0~1.0（越大越快，室内建议 0.08~0.20）
   slow_speed: 0.06            # 慢速前进速度（前方偏近时用）
-  turn_speed: 0.4             # 转弯速度（当前转弯用方向键，此值保留备用）
-  steer_speed: 0.08           # 轻微偏转侧向速度（贴墙太近时弧线远离，比避障转弯温和）
-  front_stop_m: 0.80           # 雷达前方安全距离（低于则转弯，不可前进）
-  front_slow_m: 1.30           # 低于此距离慢速前进
+  turn_speed: 0.4             # 保留备用（原地转用 DIR_SPIN 方向键，不读此值）
+  front_stop_m: 0.80          # 雷达前方安全距离（低于则转弯，不可前进）
+  front_slow_m: 1.30          # 低于此距离慢速前进
   auto_start: false           # 启动后自动开始建图

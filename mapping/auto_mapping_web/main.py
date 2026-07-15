@@ -57,13 +57,11 @@ class AppState:
         # 步进控制：每个动作执行 step_duration_ms 后发 STOP，再停 step_pause_ms
         self.step_duration = int(control.get("step_duration_ms", 1200)) / 1000.0
         self.turn_step_duration = int(control.get("turn_step_duration_ms", 500)) / 1000.0
-        self.u_turn_duration = int(control.get("u_turn_duration_ms", 1300)) / 1000.0
         self.step_pause = int(control.get("step_pause_ms", 600)) / 1000.0
         # 速度（0.0~1.0，映射到 -128~127）
         self.forward_speed = float(control.get("forward_speed", 0.15))
         self.slow_speed = float(control.get("slow_speed", 0.06))
         self.turn_speed = float(control.get("turn_speed", 0.4))
-        self.steer_speed = float(control.get("steer_speed", 0.08))
 
         video = cfg.get("video", {})
         self.video_fps = float(video.get("target_fps", 15))
@@ -180,43 +178,44 @@ class AppState:
 
     def control_step(self) -> None:
         """走一步：决策 → 执行 step_duration → STOP → 等待 step_pause。
-        在独立线程中运行，time.sleep 不会阻塞 asyncio 事件循环。"""
-        if not self.auto_running:
-            time.sleep(0.1)
-            return
+        未启动建图时只刷新决策预览（不发车端动作）。"""
         with self._lock:
             scan = self.latest_scan
             vis = self.latest_vision
-        plan = self.planner.decide(scan, vis)
+            running = self.auto_running
+
+        if not running:
+            plan = self.planner.decide(scan, vis, count_step=False)
+            plan["preview"] = True
+            with self._lock:
+                self.latest_plan = plan
+            time.sleep(0.2)
+            return
+
+        plan = self.planner.decide(scan, vis, count_step=True)
+        plan["preview"] = False
         action = plan["action"]
         with self._lock:
             self.latest_plan = plan
-        # 1) 发动作（带上配置的速度）
         try:
             self.car.send_action(
                 action,
                 forward_speed=self.forward_speed,
                 slow_speed=self.slow_speed,
                 turn_speed=self.turn_speed,
-                steer_speed=self.steer_speed,
             )
         except Exception as exc:
             logger.warning("send action failed: %s", exc)
-        # 2) 执行固定时长：掉头最久，避障旋转最短，其他正常
-        if action.startswith("U_TURN"):
-            duration = self.u_turn_duration
-        elif action.startswith("TURN"):
+        if action.startswith("TURN"):
             duration = self.turn_step_duration
         else:
             duration = self.step_duration
         time.sleep(duration)
-        # 3) 主动停车，防止小车因为没收到 STOP 一直跑
         if self.auto_running:
             try:
                 self.car.send_action("STOP")
             except Exception:
                 pass
-        # 4) 停顿一下再下一步，给雷达/视觉刷新时间
         time.sleep(self.step_pause)
 
     def control_thread(self) -> None:

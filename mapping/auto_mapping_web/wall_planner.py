@@ -1,9 +1,10 @@
 """融合雷达 + OpenCV 视觉的沿墙建图决策。
 
-核心原则：
+核心原则（稳定版）：
 - 雷达是前方安全的第一判据，视觉只做辅助
-- 大空地（没侧墙、前方通畅）→ 直行探索，不原地转圈
-- 只有雷达确认前方有障碍才转弯避障
+- 前方障碍 → TURN（原地旋转，短 500ms）
+- 侧墙太近 → LEFT/RIGHT（边走边偏，不原地转圈）
+- 大空地 → 直行，不转圈
 """
 
 from __future__ import annotations
@@ -22,54 +23,126 @@ class WallPlanner:
         target_wall_px: float = 120.0,
         front_stop_m: float = 0.80,
         front_slow_m: float = 1.30,
+        # 支架自击常见在 ~0.08~0.15m，低于此一律当无效
+        ignore_below_m: float = 0.18,
     ) -> None:
         self.follow_side = follow_side
         self.target_dist_m = target_dist_m
         self.target_wall_px = target_wall_px
         self.front_stop_m = front_stop_m
         self.front_slow_m = front_slow_m
+        self.ignore_below_m = ignore_below_m
         self.step = 0
-        # 连续转弯计数：避免连续转太多圈
         self._consecutive_turns = 0
+        self._logged_scan_meta = False
 
-    def _lidar_sectors(self, scan: dict[str, Any]) -> dict[str, Optional[float]]:
+    @staticmethod
+    def _min_dist(*vals: Optional[float]) -> Optional[float]:
+        valid = [v for v in vals if v is not None]
+        return min(valid) if valid else None
+
+    def lidar_sectors(self, scan: Optional[dict[str, Any]]) -> dict[str, Optional[float]]:
+        """正前/侧向/前侧/对侧扇区最短距离（米）。
+
+        - 忽略 ignore_below_m 以内的点（支架自击，常见恒定 ~0.11m）
+        - 「正前」只取车头方向窄扇区，不用过宽的左右前（避免走廊侧墙触发硬停）
+        """
+        empty = {
+            "front": None, "side": None, "front_side": None,
+            "other_side": None, "front_core": None,
+        }
+        if not scan:
+            return empty
         ranges = scan.get("ranges", [])
         if not ranges:
-            return {"front": None, "side": None, "front_left": None, "front_right": None}
+            return empty
         angle_min = float(scan.get("angle_min", 0))
         inc = float(scan.get("angle_increment", 0))
         rmax = float(scan.get("range_max", 8))
+        r_lo = self.ignore_below_m
+        self._last_rmax = rmax
+
+        if not self._logged_scan_meta:
+            self._logged_scan_meta = True
+            n = len(ranges)
+            amax = angle_min + inc * max(0, n - 1)
+            print(
+                f"[wall_planner] scan meta: n={n} angle_min={math.degrees(angle_min):.1f}° "
+                f"angle_max={math.degrees(amax):.1f}° ignore_below={r_lo}m"
+            )
+
+        def norm(a: float) -> float:
+            return math.atan2(math.sin(a), math.cos(a))
 
         def sector(lo_deg: float, hi_deg: float) -> Optional[float]:
+            """返回扇区最短有效距离。
+
+            空地时雷达常回 inf / ≥range_max，旧逻辑全丢掉 → 显示成「—」。
+            若扇区内只有「通畅」回波，则返回 rmax，表示前方开阔。
+            """
             lo, hi = math.radians(min(lo_deg, hi_deg)), math.radians(max(lo_deg, hi_deg))
             best = None
-            ang = angle_min
-            for r in ranges:
-                if 0.05 < r < rmax and lo <= ang <= hi:
-                    best = r if best is None else min(best, r)
-                ang += inc
-            return best
+            saw_clear = False
+            saw_beam = False
+            for i, r in enumerate(ranges):
+                try:
+                    rv = float(r)
+                except (TypeError, ValueError):
+                    continue
+                ang = norm(angle_min + i * inc)
+                if not (lo <= ang <= hi):
+                    continue
+                saw_beam = True
+                if rv != rv or rv <= 0:
+                    continue
+                # 过近 = 支架噪点，丢掉
+                if rv <= r_lo:
+                    continue
+                # 过远 / inf = 该方向通畅
+                if rv >= rmax or rv == float("inf"):
+                    saw_clear = True
+                    continue
+                best = rv if best is None else min(best, rv)
+            if best is not None:
+                return best
+            if saw_clear:
+                return rmax  # 开阔，不是 0，也不是无数据
+            if saw_beam:
+                return None  # 有波束但全是噪点/无效
+            return None
 
         if self.follow_side == "right":
             side = sector(-110, -70)
-            front_side = sector(-70, -35)   # 右前方
-            other_side = sector(35, 70)      # 左前方（仅参考）
+            front_side = sector(-70, -35)   # 右前，仅沿墙参考
+            other_side = sector(35, 70)     # 左前，仅参考
         else:
             side = sector(70, 110)
-            front_side = sector(35, 70)      # 左前方
-            other_side = sector(-70, -35)    # 右前方（仅参考）
-        front = sector(-35, 35)
-        return {"front": front, "side": side, "front_side": front_side, "other_side": other_side}
+            front_side = sector(35, 70)
+            other_side = sector(-70, -35)
+
+        # 硬停用「车头」：略宽中心 + 贴近中心的左右条带（不含走廊侧墙角度）
+        front_core = sector(-30, 30)
+        front_l = sector(25, 50)
+        front_r = sector(-50, -25)
+        front = self._min_dist(front_core, front_l, front_r)
+
+        return {
+            "front": front,
+            "side": side,
+            "front_side": front_side,
+            "other_side": other_side,
+            "front_core": front_core,
+        }
 
     def decide(
         self,
         scan: Optional[dict[str, Any]],
         vision: Optional[dict[str, Any]],
+        *,
+        count_step: bool = True,
     ) -> Dict[str, Any]:
         vis = vision or {}
-        sectors = self._lidar_sectors(scan) if scan else {
-            "front": None, "side": None, "front_side": None, "other_side": None
-        }
+        sectors = self.lidar_sectors(scan)
         front_m = sectors["front"]
         side_m = sectors["side"]
         front_side_m = sectors["front_side"]
@@ -78,48 +151,46 @@ class WallPlanner:
         corner = vis.get("corner_hint", "none")
         wall_px = vis.get("wall_dist_px")
         side_cn = "右" if self.follow_side == "right" else "左"
-        # 前方避障：原地旋转（短时间 500ms）
         turn_away = "TURN_LEFT" if self.follow_side == "right" else "TURN_RIGHT"
-        # 掉头：原地旋转（长时间 1300ms，转约 180°）
-        u_turn = "U_TURN_LEFT" if self.follow_side == "right" else "U_TURN_RIGHT"
-        # 侧墙微调：轻微弧线偏转（比避障转弯幅度小）
-        steer_away = "STEER_LEFT" if self.follow_side == "right" else "STEER_RIGHT"
+        steer_away = "LEFT" if self.follow_side == "right" else "RIGHT"
+
+        front_clearance = front_m
+
+        def finish(action: str, guide_cn: str) -> Dict[str, Any]:
+            return self._plan(action, guide_cn, sectors, front_clearance)
 
         # ============ 1) 前方硬安全门（雷达） ============
-        # 雷达是前方避障的唯一权威判据
-        if front_m is not None and front_m < self.front_stop_m:
-            self.step += 1
-            self._consecutive_turns += 1
-            # 走廊末端：前方有墙 + 侧方也近 → 掉头
-            if side_m is not None and side_m < self.target_dist_m * 1.5:
-                return self._plan(u_turn, f"第{self.step}步：走廊末端（前 {front_m:.2f}m 侧 {side_m:.2f}m）— 掉头")
-            # 普通前方障碍：短转避障
-            return self._plan(turn_away, f"第{self.step}步：雷达前方 {front_m:.2f}m — 转弯避障")
+        if front_clearance is not None and front_clearance < self.front_stop_m:
+            if count_step:
+                self.step += 1
+                self._consecutive_turns += 1
+            step_s = f"第{self.step}步：" if count_step else "预览："
+            return finish(turn_away, f"{step_s}雷达前方 {front_clearance:.2f}m — 原地转弯避障")
 
         # ============ 2) 视觉前方墙角（需雷达辅助确认） ============
-        # 只有雷达也显示前方偏近时，才信视觉的前方墙判断
-        # 防止 OpenCV 边缘检测在大空地误判
-        if (front_v > 0.35 or corner == "concave") and front_m is not None and front_m < self.front_slow_m:
-            self.step += 1
-            self._consecutive_turns += 1
-            if side_m is not None and side_m < self.target_dist_m * 1.5:
-                return self._plan(u_turn, f"第{self.step}步：视觉+雷达走廊末端 — 掉头")
-            return self._plan(turn_away, f"第{self.step}步：视觉+雷达前方 — 转弯避障")
+        if (front_v > 0.35 or corner == "concave") and front_clearance is not None and front_clearance < self.front_slow_m:
+            if count_step:
+                self.step += 1
+                self._consecutive_turns += 1
+            step_s = f"第{self.step}步：" if count_step else "预览："
+            return finish(turn_away, f"{step_s}视觉+雷达前方 — 原地转弯避障")
 
-        # 前方安全通过，重置连续转弯计数
-        self._consecutive_turns = 0
+        if count_step:
+            self._consecutive_turns = 0
 
-        # ============ 3) 侧向太近 → 轻微弧线偏转 ============
-        # STEER 用 motion packet（前进+小幅侧向），比 TURN 温和
+        # ============ 3) 侧向太近 → 边走边转向远离 ============
         if side_m is not None and side_m < self.target_dist_m * 0.5:
-            return self._plan(steer_away, f"雷达：离{side_cn}墙 {side_m:.2f}m 太近 — 轻微偏转")
+            prefix = "预览：" if not count_step else ""
+            return finish(steer_away, f"{prefix}雷达：离{side_cn}墙 {side_m:.2f}m 太近 — 边走边偏")
 
         if wall_px is not None and wall_px < self.target_wall_px * 0.5:
-            return self._plan(steer_away, f"视觉：离{side_cn}墙太近 — 轻微偏转")
+            prefix = "预览：" if not count_step else ""
+            return finish(steer_away, f"{prefix}视觉：离{side_cn}墙太近 — 边走边偏")
 
         # ============ 4) 前方偏近 → 慢速前进 ============
-        if front_m is not None and front_m < self.front_slow_m:
-            return self._plan("FORWARD_SLOW", f"前方 {front_m:.2f}m — 慢速沿{side_cn}墙前进")
+        if front_clearance is not None and front_clearance < self.front_slow_m:
+            prefix = "预览：" if not count_step else ""
+            return finish("FORWARD_SLOW", f"{prefix}前方 {front_clearance:.2f}m — 慢速沿{side_cn}墙前进")
 
         # ============ 5) 有侧墙信号 → 沿墙前进 ============
         side_following = (
@@ -128,17 +199,47 @@ class WallPlanner:
             or (front_side_m is not None and front_side_m < 1.5)
         )
         if side_following:
-            return self._plan("FORWARD", f"沿{side_cn}墙前进，保持约 {self.target_dist_m}m")
+            prefix = "预览：" if not count_step else ""
+            return finish("FORWARD", f"{prefix}沿{side_cn}墙前进，保持约 {self.target_dist_m}m")
 
-        # ============ 6) 大空地：前方通畅 → 直行探索 ============
-        # 楼里也有墙，但如果侧方雷达没检测到（太远/角度问题），就先直行
-        # 等雷达扫到墙再开始沿墙
-        return self._plan("FORWARD", "前方通畅 — 直行探索")
+        # ============ 6) 大空地 → 直行探索 ============
+        prefix = "预览：" if not count_step else ""
+        return finish("FORWARD", f"{prefix}前方通畅 — 直行探索")
 
-    def _plan(self, action: str, guide_cn: str) -> Dict[str, Any]:
+    def _plan(
+        self,
+        action: str,
+        guide_cn: str,
+        sectors: Optional[dict[str, Optional[float]]] = None,
+        front_clearance: Optional[float] = None,
+    ) -> Dict[str, Any]:
+        sec = sectors or {
+            "front": None, "side": None, "front_side": None,
+            "other_side": None, "front_core": None,
+        }
+
+        def fmt(v: Optional[float]) -> Optional[float]:
+            return None if v is None else round(float(v), 3)
+
+        display_front = front_clearance if front_clearance is not None else sec.get("front")
+
         return {
             "action": action,
             "guide_cn": guide_cn,
             "follow_side": self.follow_side,
-            "move_forward": action in ("FORWARD", "FORWARD_SLOW", "STEER_LEFT", "STEER_RIGHT", "LEFT", "RIGHT"),
+            "move_forward": action in ("FORWARD", "FORWARD_SLOW", "LEFT", "RIGHT"),
+            "lidar": {
+                "front_m": fmt(display_front),
+                "front_core_m": fmt(sec.get("front_core")),
+                "side_m": fmt(sec.get("side")),
+                "front_side_m": fmt(sec.get("front_side")),
+                "other_side_m": fmt(sec.get("other_side")),
+                "range_max_m": float(getattr(self, "_last_rmax", 8.0)),
+            },
+            "thresholds": {
+                "front_stop_m": self.front_stop_m,
+                "front_slow_m": self.front_slow_m,
+                "target_dist_m": self.target_dist_m,
+                "ignore_below_m": self.ignore_below_m,
+            },
         }

@@ -74,28 +74,21 @@ def action_to_packet(
     forward_speed: float = 0.15,
     slow_speed: float = 0.06,
     turn_speed: float = 0.4,
-    steer_speed: float = 0.08,
 ) -> str:
     """
-    根据动作构建控制帧。
-    前进/后退/慢速 → 用 cmd 0x10 速度指令（速度可调）
-    原地转弯/掉头  → 用 cmd 0x15 方向键（固件转速）
-    轻微偏转       → 用 cmd 0x10 速度指令（前进+小幅侧向，弧线行驶）
-    停止           → 用 cmd 0x15 STOP
+    根据动作构建控制帧（稳定版映射）。
+    前进/后退/慢速 → cmd 0x10 速度指令
+    原地转弯       → cmd 0x15 DIR_SPIN（TURN_LEFT/RIGHT）
+    侧墙边走边偏   → cmd 0x15 DIR_LEFT/RIGHT（LEFT/RIGHT）
+    停止           → cmd 0x15 STOP
     """
     if action == "STOP":
         return build_direction_packet(car_type, DIR_STOP)
 
-    # 原地旋转（短时间避障）
+    # 原地旋转避障（control_step 里用 turn_step_duration ≈ 500ms）
     if action == "TURN_LEFT":
         return build_direction_packet(car_type, DIR_SPIN_LEFT)
     if action == "TURN_RIGHT":
-        return build_direction_packet(car_type, DIR_SPIN_RIGHT)
-
-    # 掉头（原地旋转，control_step 里用更长时间）
-    if action == "U_TURN_LEFT":
-        return build_direction_packet(car_type, DIR_SPIN_LEFT)
-    if action == "U_TURN_RIGHT":
         return build_direction_packet(car_type, DIR_SPIN_RIGHT)
 
     if action == "FORWARD":
@@ -105,19 +98,12 @@ def action_to_packet(
     if action == "BACKWARD":
         return build_motion_packet(car_type, -forward_speed, 0.0)
 
-    # 轻微偏转：前进 + 小幅侧向 = 弧线行驶（比方向键温和）
-    if action == "STEER_LEFT":
-        return build_motion_packet(car_type, slow_speed, -steer_speed)
-    if action == "STEER_RIGHT":
-        return build_motion_packet(car_type, slow_speed, steer_speed)
-
-    # 方向键转向（边走边转，不原地旋转）
+    # 边走边偏（侧墙微调）
     if action == "LEFT":
         return build_direction_packet(car_type, DIR_LEFT)
     if action == "RIGHT":
         return build_direction_packet(car_type, DIR_RIGHT)
 
-    # 兜底：有显式速度就用速度指令
     if abs(speed_x) + abs(speed_y) > 0.001:
         return build_motion_packet(car_type, speed_x, speed_y)
     return build_direction_packet(car_type, DIR_STOP)

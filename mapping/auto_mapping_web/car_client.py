@@ -57,7 +57,6 @@ class CarClient:
         forward_speed: float = 0.15,
         slow_speed: float = 0.06,
         turn_speed: float = 0.4,
-        steer_speed: float = 0.08,
     ) -> bool:
         with self._lock:
             if not self._sock and not self.connect():
@@ -67,7 +66,6 @@ class CarClient:
                 forward_speed=forward_speed,
                 slow_speed=slow_speed,
                 turn_speed=turn_speed,
-                steer_speed=steer_speed,
             )
             ok = self._send_raw(pkt)
             if ok:
